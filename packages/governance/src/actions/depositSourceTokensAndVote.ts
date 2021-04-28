@@ -10,6 +10,7 @@ import {
   models,
   ParsedAccount,
   actions,
+  SequenceType,
 } from '@oyster/common';
 
 import {
@@ -199,8 +200,7 @@ export const depositSourceTokensAndVote = async (
       wallet,
       [depositInstructions, voteInstructions],
       [depositSigners, voteSigners],
-      true,
-      true,
+      SequenceType.Sequential,
     );
 
     notify({

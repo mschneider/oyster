@@ -165,8 +165,7 @@ export const createProposal = async (
         instructions,
       ],
       [...associatedSigners, createGovernanceAccountsSigners, signers],
-      true,
-      true,
+      SequenceType.Sequential,
     );
 
     notify({
