@@ -9,6 +9,7 @@ import { formDefaults } from '../../../../tools/forms';
 import { GovernanceConfigForm } from './governanceConfigForm';
 
 import { InstructionSelector, InstructionType } from './instructionSelector';
+import { SplTokenSaleForm } from './splTokenSaleForm';
 import { SplTokenTransferForm } from './splTokenTransferForm';
 
 export const TokenInstructionsForm = ({
@@ -26,6 +27,7 @@ export const TokenInstructionsForm = ({
 
   let instructions = [
     InstructionType.SplTokenTransfer,
+    InstructionType.SplTokenSale,
     InstructionType.GovernanceSetConfig,
   ];
 
@@ -42,7 +44,13 @@ export const TokenInstructionsForm = ({
           onCreateInstruction={onCreateInstruction}
         ></SplTokenTransferForm>
       )}
-
+      {instruction === InstructionType.SplTokenSale && (
+        <SplTokenSaleForm
+          form={form}
+          governance={governance}
+          onCreateInstruction={onCreateInstruction}
+        ></SplTokenSaleForm>
+      )}
       {instruction === InstructionType.GovernanceSetConfig && (
         <GovernanceConfigForm
           form={form}
