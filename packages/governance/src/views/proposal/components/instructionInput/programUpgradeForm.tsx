@@ -62,6 +62,7 @@ export const ProgramUpgradeForm = ({
         name="bufferAddress"
         label="buffer address"
         accountInfoValidator={bufferValidator}
+        required
       ></AccountFormItem>
       <Form.Item label="spill account (wallet)">
         <ExplorerLink address={wallet.publicKey} type="address" />

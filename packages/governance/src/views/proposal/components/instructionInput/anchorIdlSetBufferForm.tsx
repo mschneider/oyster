@@ -53,6 +53,7 @@ export const AnchorIdlSetBufferForm = ({
       <AccountFormItem
         name="idlBufferAddress"
         label="idl buffer"
+        required
       ></AccountFormItem>
 
       <Form.Item label="idl account" initialValue={idlAddress}>

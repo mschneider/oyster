@@ -184,10 +184,15 @@ export const SplTokenSaleForm = ({
         <InputNumber min={0} />
       </Form.Item>
 
-      <AccountFormItem name="programId" label="sale program"></AccountFormItem>
+      <AccountFormItem
+        name="programId"
+        label="sale program"
+        required
+      ></AccountFormItem>
       <AccountFormItem
         name="mintId"
         label="sale proceed mint"
+        required
       ></AccountFormItem>
 
       <Form.Item name="start" label="start" rules={[{ required: true }]}>

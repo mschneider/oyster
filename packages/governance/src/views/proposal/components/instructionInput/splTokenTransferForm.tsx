@@ -75,6 +75,7 @@ export const SplTokenTransferForm = ({
         name="destination"
         label="destination account"
         accountInfoValidator={tokenAccountValidator}
+        required
       ></AccountFormItem>
       <Form.Item name="amount" label="amount" rules={[{ required: true }]}>
         <InputNumber min={1} />

@@ -25,6 +25,95 @@ import {
 import { ParsedAccount } from '../../../../common/dist/lib';
 import { Realm } from '../../models/accounts';
 
+function AccountGovernanceForm() {
+  return (
+    <>
+      <AccountFormItem
+        name="governedAccountAddress"
+        label={LABELS.ACCOUNT_ADDRESS}
+        required
+      ></AccountFormItem>
+    </>
+  );
+}
+
+function ProgramGovernanceForm() {
+  return (
+    <>
+      <AccountFormItem
+        name="governedAccountAddress"
+        label={LABELS.PROGRAM_ID_LABEL}
+        required
+      ></AccountFormItem>
+      <Form.Item
+        name="transferAuthority"
+        label={`transfer ${LABELS.UPGRADE_AUTHORITY} to governance`}
+        valuePropName="checked"
+      >
+        <Checkbox></Checkbox>
+      </Form.Item>
+    </>
+  );
+}
+
+function SplTokenMintGovernanceForm() {
+  return (
+    <>
+      <AccountFormItem
+        name="governedAccountAddress"
+        label={LABELS.MINT_ADDRESS_LABEL}
+        required
+      ></AccountFormItem>
+      <Form.Item
+        name="transferAuthority"
+        label={`transfer ${LABELS.MINT_AUTHORITY} to governance`}
+        valuePropName="checked"
+      >
+        <Checkbox></Checkbox>
+      </Form.Item>
+    </>
+  );
+}
+
+function SplTokenGovernanceForm() {
+  const [create, setCreate] = useState(false);
+
+  const onChange = (e: any) => {
+    setCreate(e.target.checked);
+  };
+
+  return (
+    <>
+      <Form.Item
+        name="createAccount"
+        label={`create new ${LABELS.TOKEN_ACCOUNT}`}
+        valuePropName="checked"
+      >
+        <Checkbox onChange={onChange}></Checkbox>
+      </Form.Item>
+      {create && (
+        <AccountFormItem
+          name="mintAccountAddress"
+          label={LABELS.MINT_ADDRESS_LABEL}
+          required
+        ></AccountFormItem>
+      )}
+      <AccountFormItem
+        name="governedAccountAddress"
+        label={LABELS.TOKEN_ACCOUNT_ADDRESS}
+        disabled={create}
+      ></AccountFormItem>
+      <Form.Item
+        name="transferAuthority"
+        label={`transfer ${LABELS.TOKEN_OWNER} to governance`}
+        valuePropName="checked"
+      >
+        <Checkbox disabled={create}></Checkbox>
+      </Form.Item>
+    </>
+  );
+}
+
 export function RegisterGovernance({
   buttonProps,
   realm,
@@ -44,6 +133,8 @@ export function RegisterGovernance({
       governanceType: GovernanceType;
       governedAccountAddress: string;
       transferAuthority: boolean;
+      createAccount: boolean;
+      mintAccountAddress?: string;
     } & GovernanceConfigValues,
   ) => {
     const config = getGovernanceConfig(values);
@@ -55,6 +146,10 @@ export function RegisterGovernance({
       new PublicKey(values.governedAccountAddress),
       config,
       values.transferAuthority,
+      values.createAccount,
+      values.createAccount && values.mintAccountAddress
+        ? new PublicKey(values.mintAccountAddress)
+        : undefined,
     );
   };
 
@@ -95,36 +190,18 @@ export function RegisterGovernance({
         </Radio.Group>
       </Form.Item>
 
-      <AccountFormItem
-        name="governedAccountAddress"
-        label={
-          governanceType === GovernanceType.Program
-            ? LABELS.PROGRAM_ID_LABEL
-            : governanceType === GovernanceType.Mint
-            ? LABELS.MINT_ADDRESS_LABEL
-            : governanceType === GovernanceType.Token
-            ? LABELS.TOKEN_ACCOUNT_ADDRESS
-            : LABELS.ACCOUNT_ADDRESS
-        }
-      ></AccountFormItem>
-
-      {(governanceType === GovernanceType.Program ||
-        governanceType === GovernanceType.Mint ||
-        governanceType === GovernanceType.Token) && (
-        <Form.Item
-          name="transferAuthority"
-          label={`transfer ${
-            governanceType === GovernanceType.Program
-              ? LABELS.UPGRADE_AUTHORITY
-              : governanceType === GovernanceType.Mint
-              ? LABELS.MINT_AUTHORITY
-              : LABELS.TOKEN_OWNER
-          } to governance`}
-          valuePropName="checked"
-        >
-          <Checkbox></Checkbox>
-        </Form.Item>
+      {governanceType === GovernanceType.Account ? (
+        <AccountGovernanceForm />
+      ) : governanceType === GovernanceType.Program ? (
+        <ProgramGovernanceForm />
+      ) : governanceType === GovernanceType.Mint ? (
+        <SplTokenMintGovernanceForm />
+      ) : governanceType === GovernanceType.Token ? (
+        <SplTokenGovernanceForm />
+      ) : (
+        `unhandled governanceType ${governanceType}`
       )}
+
       <GovernanceConfigFormItem realm={realm}></GovernanceConfigFormItem>
     </ModalFormAction>
   );

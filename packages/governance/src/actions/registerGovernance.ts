@@ -1,4 +1,4 @@
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { Account, PublicKey, TransactionInstruction } from '@solana/web3.js';
 
 import { withCreateAccountGovernance } from '../models/withCreateAccountGovernance';
 import { GovernanceType } from '../models/enums';
@@ -8,6 +8,7 @@ import { sendTransactionWithNotifications } from '../tools/transactions';
 import { withCreateMintGovernance } from '../models/withCreateMintGovernance';
 import { withCreateTokenGovernance } from '../models/withCreateTokenGovernance';
 import { RpcContext } from '../models/api';
+import { withCreateSplTokenAccount } from '../models/withCreateSplTokenAccount';
 
 export const registerGovernance = async (
   { connection, wallet, programId, walletPubkey }: RpcContext,
@@ -16,8 +17,11 @@ export const registerGovernance = async (
   governedAccount: PublicKey,
   config: GovernanceConfig,
   transferAuthority?: boolean,
+  createAccount?: boolean,
+  mintAccount?: PublicKey,
 ): Promise<PublicKey> => {
   let instructions: TransactionInstruction[] = [];
+  let signers: Account[] = [];
 
   let governanceAddress;
 
@@ -66,6 +70,19 @@ export const registerGovernance = async (
       break;
     }
     case GovernanceType.Token: {
+      if (createAccount) {
+        governedAccount = (
+          await withCreateSplTokenAccount(
+            connection,
+            wallet,
+            instructions,
+            signers,
+            mintAccount!,
+          )
+        ).tokenAccountAddress;
+        transferAuthority = true;
+      }
+
       governanceAddress = (
         await withCreateTokenGovernance(
           instructions,
@@ -91,7 +108,7 @@ export const registerGovernance = async (
     connection,
     wallet,
     instructions,
-    [],
+    signers,
     'Registering governance',
     'Governance has been registered',
   );

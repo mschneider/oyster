@@ -10,12 +10,14 @@ const { useConnection } = contexts.Connection;
 export function AccountFormItem({
   name,
   label,
-  required = true,
+  required,
+  disabled,
   accountInfoValidator,
 }: {
   name: string;
   label: string;
   required?: boolean;
+  disabled?: boolean;
   accountInfoValidator?: (
     account: AccountInfo<Buffer | ParsedAccountData>,
   ) => void;
@@ -51,7 +53,7 @@ export function AccountFormItem({
       label={label}
       rules={[{ required: required, validator: accountValidator }]}
     >
-      <Input allowClear={true} />
+      <Input allowClear={true} {...{ disabled }} />
     </Form.Item>
   );
 }
