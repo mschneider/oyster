@@ -7,6 +7,7 @@ export enum InstructionType {
   GovernanceSetConfig,
   SplTokenTransfer,
   SplTokenSale,
+  SplTokenSaleTransfer,
   SplTokenMintTo,
 }
 
@@ -16,6 +17,7 @@ const instructionNames = [
   'governance set-config',
   'spl-token transfer',
   'spl-token sale',
+  'spl-token sale-transfer',
   'spl-token mint-to',
 ];
 
