@@ -3,27 +3,27 @@ import { ButtonProps, Radio, Checkbox } from 'antd';
 import { Form } from 'antd';
 import { PublicKey } from '@solana/web3.js';
 
-import { LABELS } from '../../constants';
+import { LABELS } from '../../../constants';
 
 import { Redirect } from 'react-router';
 
-import { GovernanceType } from '../../models/enums';
-import { registerGovernance } from '../../actions/registerGovernance';
+import { GovernanceType } from '../../../models/enums';
+import { registerGovernance } from '../../../actions/registerGovernance';
 
-import { useKeyParam } from '../../hooks/useKeyParam';
-import { ModalFormAction } from '../../components/ModalFormAction/modalFormAction';
+import { useKeyParam } from '../../../hooks/useKeyParam';
+import { ModalFormAction } from '../../../components/ModalFormAction/modalFormAction';
 
-import { AccountFormItem } from '../../components/AccountFormItem/accountFormItem';
+import { AccountFormItem } from '../../../components/AccountFormItem/accountFormItem';
 
-import { useRpcContext } from '../../hooks/useRpcContext';
-import { getGovernanceUrl } from '../../tools/routeTools';
+import { useRpcContext } from '../../../hooks/useRpcContext';
+import { getGovernanceUrl } from '../../../tools/routeTools';
 import {
   getGovernanceConfig,
   GovernanceConfigFormItem,
   GovernanceConfigValues,
-} from '../../components/governanceConfigFormItem/governanceConfigFormItem';
-import { ParsedAccount } from '../../../../common/dist/lib';
-import { Realm } from '../../models/accounts';
+} from '../../../components/governanceConfigFormItem/governanceConfigFormItem';
+import { ParsedAccount } from '../../../../../common/dist/lib';
+import { Realm } from '../../../models/accounts';
 
 function AccountGovernanceForm() {
   return (
@@ -114,7 +114,7 @@ function SplTokenGovernanceForm() {
   );
 }
 
-export function RegisterGovernance({
+export function RegisterGovernanceButton({
   buttonProps,
   realm,
 }: {
