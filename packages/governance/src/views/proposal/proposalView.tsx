@@ -1,8 +1,12 @@
 import { Card, Col, Row, Spin, Statistic, Tabs } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { LABELS } from '../../constants';
-import { ParsedAccount, TokenIcon, constants } from '@oyster/common';
-import { BigNumber } from 'bignumber.js';
+import {
+  ParsedAccount,
+  TokenIcon,
+  constants,
+  ExplorerLink,
+} from '@oyster/common';
 
 import ReactMarkdown from 'react-markdown';
 
@@ -23,6 +27,7 @@ import {
   Governance,
   Proposal,
   ProposalState,
+  Realm,
   TokenOwnerRecord,
   VoteRecord,
 } from '../../models/accounts';
@@ -39,10 +44,18 @@ import {
   useWalletSignatoryRecord,
   useInstructionsByProposal,
   useVoteRecordsByProposal,
+  useSignatoriesByProposal,
 } from '../../hooks/apiHooks';
 import BN from 'bn.js';
 
+import { VoteScore } from './components/vote/voteScore';
+
+import { VoteCountdown } from './components/header/voteCountdown';
+import { useRealm } from '../../contexts/GovernanceContext';
+import { getMintMaxVoteWeight } from '../../tools/units';
+
 const { TabPane } = Tabs;
+
 const { ZERO } = constants;
 
 export const urlRegex =
@@ -64,14 +77,22 @@ export const ProposalView = () => {
   let proposal = useProposal(proposalKey);
 
   let governance = useGovernance(proposal?.info.governance);
+  let realm = useRealm(governance?.info.realm);
 
   const governingTokenMint = useMint(proposal?.info.governingTokenMint);
 
   const voteRecords = useVoteRecordsByProposal(proposal?.pubkey);
+
   const tokenOwnerRecords = useTokenOwnerRecords(
     governance?.info.realm,
-    proposal?.info.governingTokenMint,
+    proposal?.info.isVoteFinalized() // TODO: for finalized votes show a single item for abstained votes
+      ? undefined
+      : proposal?.info.governingTokenMint,
   );
+
+  if (!realm) {
+    return <Spin></Spin>;
+  }
 
   return (
     <>
@@ -79,6 +100,7 @@ export const ProposalView = () => {
         {proposal && governance && governingTokenMint ? (
           <InnerProposalView
             proposal={proposal}
+            realm={realm}
             governance={governance}
             voterDisplayData={mapVoterDisplayData(
               voteRecords,
@@ -103,7 +125,7 @@ function useLoadGist({
   setMsg,
   setContent,
   isGist,
-  proposalState: proposal,
+  proposal,
 }: {
   loading: boolean;
   setLoading: (b: boolean) => void;
@@ -111,7 +133,7 @@ function useLoadGist({
   setFailed: (b: boolean) => void;
   setContent: (b: string) => void;
   isGist: boolean;
-  proposalState: ParsedAccount<Proposal>;
+  proposal: ParsedAccount<Proposal>;
 }) {
   useMemo(() => {
     if (loading) {
@@ -218,6 +240,7 @@ function mapVoterDisplayData(
 }
 
 function InnerProposalView({
+  realm,
   proposal,
   governingTokenMint,
   governance,
@@ -225,6 +248,7 @@ function InnerProposalView({
   endpoint,
   hasVotes,
 }: {
+  realm: ParsedAccount<Realm>;
   proposal: ParsedAccount<Proposal>;
   governance: ParsedAccount<Governance>;
   governingTokenMint: MintInfo;
@@ -238,6 +262,7 @@ function InnerProposalView({
     proposal.info.governingTokenMint,
   );
   const instructions = useInstructionsByProposal(proposal.pubkey);
+  const signatories = useSignatoriesByProposal(proposal.pubkey);
 
   const isUrl = !!proposal.info.descriptionLink.match(urlRegex);
   const isGist =
@@ -258,7 +283,7 @@ function InnerProposalView({
     setMsg,
     setContent,
     isGist,
-    proposalState: proposal,
+    proposal: proposal,
   });
 
   return (
@@ -273,7 +298,10 @@ function InnerProposalView({
               />
               <Col>
                 <h1>{proposal.info.name}</h1>
-                <ProposalStateBadge state={proposal.info.state} />
+                <ProposalStateBadge
+                  proposal={proposal}
+                  governance={governance}
+                />
               </Col>
             </Row>
           </Col>
@@ -356,7 +384,7 @@ function InnerProposalView({
                 >
                   <VoterTable
                     endpoint={endpoint}
-                    total={governingTokenMint.supply}
+                    total={getMaxVoteScore(realm, proposal, governingTokenMint)}
                     data={voterDisplayData}
                     decimals={governingTokenMint.decimals}
                   />
@@ -374,27 +402,56 @@ function InnerProposalView({
                 value={proposal.info.signatoriesCount}
                 suffix={`/ ${proposal.info.signatoriesSignedOffCount}`}
               />
+              {signatories
+                .filter(s => s.info.signedOff)
+                .map(s => (
+                  <ExplorerLink
+                    address={s.info.signatory}
+                    type="address"
+                    short
+                  ></ExplorerLink>
+                ))}
             </Card>
           </Col>
           <Col md={7} xs={24}>
             <Card>
-              <Statistic
-                title={LABELS.VOTE_SCORE_IN_FAVOUR}
-                value={getVoteInFavorScore(proposal, governingTokenMint)}
-                suffix={`/ ${getMaxVoteScore(governingTokenMint)}`}
-              />
+              <div className="ant-statistic">
+                <div className="ant-statistic-title">
+                  {proposal.info.isPreVotingState()
+                    ? 'Yes Vote Threshold'
+                    : 'Vote Results'}
+                </div>
+                <div>
+                  <VoteScore
+                    yesVoteCount={proposal.info.yesVotesCount}
+                    noVoteCount={proposal.info.noVotesCount}
+                    yesVoteThreshold={getYesVoteThreshold(proposal, governance)}
+                    governingMintDecimals={governingTokenMint.decimals}
+                    proposalState={proposal.info.state}
+                    maxVoteScore={getMaxVoteScore(
+                      realm,
+                      proposal,
+                      governingTokenMint,
+                    )}
+                    isPreVotingState={proposal.info.isPreVotingState()}
+                  ></VoteScore>
+                </div>
+              </div>
             </Card>
           </Col>
           <Col md={7} xs={24}>
             <Card>
-              <Statistic
-                valueStyle={{ color: 'green' }}
-                title={LABELS.VOTE_SCORE_REQUIRED}
-                value={getMinRequiredYesVoteScore(
-                  governance,
-                  governingTokenMint,
-                )}
-              />
+              <div className="ant-statistic">
+                <div className="ant-statistic-title">
+                  {proposal.info.isPreVotingState()
+                    ? 'Voting Time'
+                    : 'Voting Time Left'}
+                </div>
+                <VoteCountdown
+                  proposal={proposal}
+                  governance={governance}
+                ></VoteCountdown>
+              </div>
             </Card>
           </Col>
         </Row>
@@ -455,6 +512,7 @@ function InnerProposalView({
                     <Col xs={24} sm={24} md={12} lg={8}>
                       <NewInstructionCard
                         proposal={proposal}
+                        realm={realm}
                         governance={governance}
                       />
                     </Col>
@@ -469,33 +527,35 @@ function InnerProposalView({
   );
 }
 
-function getMinRequiredYesVoteScore(
-  governance: ParsedAccount<Governance>,
-  governingTokenMint: MintInfo,
-): string {
-  const minVotes =
-    governance.info.config.voteThresholdPercentage.value === 100
-      ? governingTokenMint.supply
-      : governingTokenMint.supply
-          .mul(new BN(governance.info.config.voteThresholdPercentage.value))
-          .div(new BN(100));
-
-  return new BigNumber(minVotes.toString())
-    .shiftedBy(-governingTokenMint.decimals)
-    .toString();
-}
-
-function getVoteInFavorScore(
+function getMaxVoteScore(
+  realm: ParsedAccount<Realm>,
   proposal: ParsedAccount<Proposal>,
   governingTokenMint: MintInfo,
-): string {
-  return new BigNumber(proposal.info.yesVotesCount.toString())
-    .shiftedBy(-governingTokenMint.decimals)
-    .toString();
+) {
+  if (proposal.info.isVoteFinalized() && proposal.info.maxVoteWeight) {
+    return proposal.info.maxVoteWeight;
+  }
+
+  if (
+    proposal.info.governingTokenMint.toBase58() ===
+    realm.info.config.councilMint?.toBase58()
+  ) {
+    return governingTokenMint.supply;
+  }
+
+  return getMintMaxVoteWeight(
+    governingTokenMint,
+    realm.info.config.communityMintMaxVoteWeightSource,
+  );
 }
 
-function getMaxVoteScore(governingTokenMint: MintInfo) {
-  return new BigNumber(governingTokenMint.supply.toString())
-    .shiftedBy(-governingTokenMint.decimals)
-    .toFormat();
+function getYesVoteThreshold(
+  proposal: ParsedAccount<Proposal>,
+  governance: ParsedAccount<Governance>,
+) {
+  return proposal.info.isVoteFinalized() &&
+    // Note Canceled state is also final but we currently don't capture vote threshold at the cancellation time
+    proposal.info.voteThresholdPercentage
+    ? proposal.info.voteThresholdPercentage.value
+    : governance.info.config.voteThresholdPercentage.value;
 }

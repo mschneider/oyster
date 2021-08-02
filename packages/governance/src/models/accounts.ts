@@ -88,14 +88,86 @@ export enum InstructionExecutionFlags {
   UseTransaction,
 }
 
+export enum MintMaxVoteWeightSourceType {
+  SupplyFraction = 0,
+  Absolute = 1,
+}
+
+export class MintMaxVoteWeightSource {
+  type = MintMaxVoteWeightSourceType.SupplyFraction;
+  value: BN;
+
+  constructor(args: { value: BN }) {
+    this.value = args.value;
+  }
+
+  static SUPPLY_FRACTION_BASE = new BN(10000000000);
+  static SUPPLY_FRACTION_DECIMALS = 10;
+
+  static FULL_SUPPLY_FRACTION = new MintMaxVoteWeightSource({
+    value: MintMaxVoteWeightSource.SUPPLY_FRACTION_BASE,
+  });
+
+  isFullSupply() {
+    return (
+      this.type === MintMaxVoteWeightSourceType.SupplyFraction &&
+      this.value.cmp(MintMaxVoteWeightSource.SUPPLY_FRACTION_BASE) === 0
+    );
+  }
+  getSupplyFraction() {
+    if (this.type !== MintMaxVoteWeightSourceType.SupplyFraction) {
+      throw new Error('Max vote weight is not fraction');
+    }
+
+    return this.value;
+  }
+}
+
+export class RealmConfigArgs {
+  useCouncilMint: boolean;
+  useCustodian: boolean;
+  communityMintMaxVoteWeightSource: MintMaxVoteWeightSource;
+
+  constructor(args: {
+    useCouncilMint: boolean;
+    useCustodian: boolean;
+    communityMintMaxVoteWeightSource: MintMaxVoteWeightSource;
+  }) {
+    this.useCouncilMint = !!args.useCouncilMint;
+    this.useCustodian = !!args.useCustodian;
+    this.communityMintMaxVoteWeightSource =
+      args.communityMintMaxVoteWeightSource;
+  }
+}
+
+export class RealmConfig {
+  councilMint: PublicKey | undefined;
+  communityMintMaxVoteWeightSource: MintMaxVoteWeightSource;
+  custodian: PublicKey | undefined;
+  reserved: Uint8Array;
+
+  constructor(args: {
+    councilMint: PublicKey | undefined;
+    communityMintMaxVoteWeightSource: MintMaxVoteWeightSource;
+    custodian: PublicKey | undefined;
+    reserved: Uint8Array;
+  }) {
+    this.councilMint = args.councilMint;
+    this.communityMintMaxVoteWeightSource =
+      args.communityMintMaxVoteWeightSource;
+    this.custodian = args.custodian;
+    this.reserved = args.reserved;
+  }
+}
+
 export class Realm {
   accountType = GovernanceAccountType.Realm;
 
   communityMint: PublicKey;
 
-  reserved: Uint8Array;
+  config: RealmConfig;
 
-  councilMint: PublicKey | undefined;
+  reserved: Uint8Array;
 
   authority: PublicKey | undefined;
 
@@ -104,16 +176,34 @@ export class Realm {
   constructor(args: {
     communityMint: PublicKey;
     reserved: Uint8Array;
-    councilMint: PublicKey | undefined;
+    config: RealmConfig;
     authority: PublicKey | undefined;
     name: string;
   }) {
     this.communityMint = args.communityMint;
+    this.config = args.config;
     this.reserved = args.reserved;
-    this.councilMint = args.councilMint;
+
     this.authority = args.authority;
     this.name = args.name;
   }
+}
+
+export async function getTokenHoldingAddress(
+  programId: PublicKey,
+  realm: PublicKey,
+  governingTokenMint: PublicKey,
+) {
+  const [tokenHoldingAddress] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from(GOVERNANCE_PROGRAM_SEED),
+      realm.toBuffer(),
+      governingTokenMint.toBuffer(),
+    ],
+    programId,
+  );
+
+  return tokenHoldingAddress;
 }
 
 export class GovernanceConfig {
@@ -305,7 +395,8 @@ export class Proposal {
 
   executionFlags: InstructionExecutionFlags;
 
-  governingTokenMintVoteSupply: BN | null;
+  maxVoteWeight: BN | null;
+  voteThresholdPercentage: VoteThresholdPercentage | null;
 
   name: string;
 
@@ -333,7 +424,8 @@ export class Proposal {
     instructionsCount: number;
     instructionsNextIndex: number;
     executionFlags: InstructionExecutionFlags;
-    governingTokenMintVoteSupply: BN | null;
+    maxVoteWeight: BN | null;
+    voteThresholdPercentage: VoteThresholdPercentage | null;
   }) {
     this.governance = args.governance;
     this.governingTokenMint = args.governingTokenMint;
@@ -356,7 +448,80 @@ export class Proposal {
     this.instructionsCount = args.instructionsCount;
     this.instructionsNextIndex = args.instructionsNextIndex;
     this.executionFlags = args.executionFlags;
-    this.governingTokenMintVoteSupply = args.governingTokenMintVoteSupply;
+    this.maxVoteWeight = args.maxVoteWeight;
+    this.voteThresholdPercentage = args.voteThresholdPercentage;
+  }
+
+  /// Returns true if Proposal is in state when no voting can happen any longer
+  isVoteFinalized(): boolean {
+    switch (this.state) {
+      case ProposalState.Succeeded:
+      case ProposalState.Executing:
+      case ProposalState.Completed:
+      case ProposalState.Cancelled:
+      case ProposalState.Defeated:
+      case ProposalState.ExecutingWithErrors:
+        return true;
+      case ProposalState.Draft:
+      case ProposalState.SigningOff:
+      case ProposalState.Voting:
+        return false;
+    }
+  }
+
+  isFinalState(): boolean {
+    // 1) ExecutingWithErrors is not really a final state, it's undefined.
+    //    However it usually indicates none recoverable execution error so we treat is as final for the ui purposes
+    // 2) Succeeded with no instructions is also treated as final since it can't transition any longer
+    //    It really doesn't make any sense but until it's solved in the program we have to consider it as final in the ui
+    switch (this.state) {
+      case ProposalState.Completed:
+      case ProposalState.Cancelled:
+      case ProposalState.Defeated:
+      case ProposalState.ExecutingWithErrors:
+        return true;
+      case ProposalState.Succeeded:
+        return this.instructionsCount === 0;
+      case ProposalState.Executing:
+      case ProposalState.Draft:
+      case ProposalState.SigningOff:
+      case ProposalState.Voting:
+        return false;
+    }
+  }
+
+  getStateTimestamp(): number {
+    switch (this.state) {
+      case ProposalState.Succeeded:
+      case ProposalState.Defeated:
+        return this.votingCompletedAt ? this.votingCompletedAt.toNumber() : 0;
+      case ProposalState.Completed:
+      case ProposalState.Cancelled:
+        return this.closedAt ? this.closedAt.toNumber() : 0;
+      case ProposalState.Executing:
+      case ProposalState.ExecutingWithErrors:
+        return this.executingAt ? this.executingAt.toNumber() : 0;
+      case ProposalState.Draft:
+        return this.draftAt.toNumber();
+      case ProposalState.SigningOff:
+        return this.signingOffAt ? this.signingOffAt.toNumber() : 0;
+      case ProposalState.Voting:
+        return this.votingAt ? this.votingAt.toNumber() : 0;
+    }
+  }
+
+  getStateSortRank(): number {
+    // Always show proposals in voting state at the top
+    if (this.state === ProposalState.Voting) {
+      return 2;
+    }
+    // Then show proposals in pending state and finalized at the end
+    return this.isFinalState() ? 0 : 1;
+  }
+
+  /// Returns true if Proposal has not been voted on yet
+  isPreVotingState() {
+    return !this.votingAtSlot;
   }
 }
 

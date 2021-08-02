@@ -1,24 +1,28 @@
 import { Form, FormInstance } from 'antd';
 import { ParsedAccount } from '@oyster/common';
-import { Governance } from '../../../../models/accounts';
+import { Governance, Realm } from '../../../../models/accounts';
 import { TransactionInstruction } from '@solana/web3.js';
 import React, { useState } from 'react';
 
 import { formDefaults } from '../../../../tools/forms';
 
-import { GovernanceConfigForm } from './governanceConfigForm';
-
 import { InstructionSelector, InstructionType } from './instructionSelector';
 import { SplTokenSaleForm } from './splTokenSaleForm';
 import { SplTokenSaleTransferForm } from './splTokenSaleTransferForm';
 import { SplTokenTransferForm } from './splTokenTransferForm';
+import {
+  getGovernanceInstructions,
+  GovernanceInstructionForm,
+} from './governanceInstructionForm';
 
 export const TokenInstructionsForm = ({
   form,
+  realm,
   governance,
   onCreateInstruction,
 }: {
   form: FormInstance;
+  realm: ParsedAccount<Realm>;
   governance: ParsedAccount<Governance>;
   onCreateInstruction: (instruction: TransactionInstruction) => void;
 }) => {
@@ -30,7 +34,7 @@ export const TokenInstructionsForm = ({
     InstructionType.SplTokenTransfer,
     InstructionType.SplTokenSale,
     InstructionType.SplTokenSaleTransfer,
-    InstructionType.GovernanceSetConfig,
+    ...getGovernanceInstructions(realm, governance),
   ];
 
   return (
@@ -60,13 +64,14 @@ export const TokenInstructionsForm = ({
           onCreateInstruction={onCreateInstruction}
         ></SplTokenSaleTransferForm>
       )}
-      {instruction === InstructionType.GovernanceSetConfig && (
-        <GovernanceConfigForm
-          form={form}
-          governance={governance}
-          onCreateInstruction={onCreateInstruction}
-        ></GovernanceConfigForm>
-      )}
+
+      <GovernanceInstructionForm
+        form={form}
+        realm={realm}
+        governance={governance}
+        onCreateInstruction={onCreateInstruction}
+        instruction={instruction}
+      ></GovernanceInstructionForm>
     </Form>
   );
 };

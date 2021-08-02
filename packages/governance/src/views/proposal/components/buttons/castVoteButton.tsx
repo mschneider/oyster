@@ -18,7 +18,7 @@ import {
 import { Vote } from '../../../../models/instructions';
 
 import { castVote } from '../../../../actions/castVote';
-import { useHasVotingTimeExpired } from '../../../../hooks/useHasVotingTimeExpired';
+import { useHasVoteTimeExpired } from '../../../../hooks/useHasVoteTimeExpired';
 import { useWalletVoteRecord } from '../../../../hooks/apiHooks';
 import { useRpcContext } from '../../../../hooks/useRpcContext';
 
@@ -36,10 +36,10 @@ export function CastVoteButton({
 }) {
   const rpcContext = useRpcContext();
   const voteRecord = useWalletVoteRecord(proposal.pubkey);
-  const hasVotingTimeExpired = useHasVotingTimeExpired(governance, proposal);
+  const hasVoteTimeExpired = useHasVoteTimeExpired(governance, proposal);
 
   const isVisible =
-    hasVotingTimeExpired === false &&
+    hasVoteTimeExpired === false &&
     !voteRecord &&
     tokenOwnerRecord &&
     !tokenOwnerRecord.info.governingTokenDepositAmount.isZero() &&
@@ -78,7 +78,13 @@ export function CastVoteButton({
           okText: LABELS.CONFIRM,
           cancelText: LABELS.CANCEL,
           onOk: async () => {
-            castVote(rpcContext, proposal, tokenOwnerRecord.pubkey, vote);
+            castVote(
+              rpcContext,
+              governance.info.realm,
+              proposal,
+              tokenOwnerRecord.pubkey,
+              vote,
+            );
           },
         })
       }
