@@ -102,6 +102,7 @@ function SplTokenGovernanceForm() {
         name="governedAccountAddress"
         label={LABELS.TOKEN_ACCOUNT_ADDRESS}
         disabled={create}
+        required={!create}
       ></AccountFormItem>
       <Form.Item
         name="transferAuthority"
@@ -143,7 +144,9 @@ export function RegisterGovernanceButton({
       rpcContext,
       values.governanceType,
       realmKey,
-      new PublicKey(values.governedAccountAddress),
+      values.governedAccountAddress
+        ? new PublicKey(values.governedAccountAddress)
+        : PublicKey.default,
       config,
       values.transferAuthority,
       values.createAccount,

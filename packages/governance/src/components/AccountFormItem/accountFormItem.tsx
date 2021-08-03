@@ -30,20 +30,22 @@ export function AccountFormItem({
     } else {
       const pubkey = tryParseKey(value);
 
-      if (!pubkey) {
+      if (rule.required && !pubkey) {
         throw new Error('Provided value is not a valid account address');
       }
 
-      // Note: Do not use the accounts cache here to always get most recent result
-      await connection.getParsedAccountInfo(pubkey).then(data => {
-        if (!data || !data.value) {
-          throw new Error('Account not found');
-        }
+      if (pubkey) {
+        // Note: Do not use the accounts cache here to always get most recent result
+        await connection.getParsedAccountInfo(pubkey).then(data => {
+          if (!data || !data.value) {
+            throw new Error('Account not found');
+          }
 
-        if (accountInfoValidator) {
-          accountInfoValidator(data.value);
-        }
-      });
+          if (accountInfoValidator) {
+            accountInfoValidator(data.value);
+          }
+        });
+      }
     }
   };
 
