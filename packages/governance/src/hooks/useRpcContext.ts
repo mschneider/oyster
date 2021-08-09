@@ -13,7 +13,7 @@ export function useRpcContext() {
   const programId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return (
-      params.get('programId') ?? 'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw'
+      params.get('programId') ?? 'GqTPL6qRf5aUuqscLh8Rg2HTxPUXfhhAXDptTLhp1t2J'
     );
   }, [location]);
 
