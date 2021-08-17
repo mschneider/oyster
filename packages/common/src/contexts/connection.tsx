@@ -27,22 +27,12 @@ import {
   TransactionTimeoutError,
 } from '../utils/errors';
 
-export type ENV =
-  | 'mainnet-beta (Serum)'
-  | 'mainnet-beta'
-  | 'testnet'
-  | 'devnet'
-  | 'localnet';
+export type ENV = 'mainnet-beta' | 'testnet' | 'devnet' | 'localnet';
 
 export const ENDPOINTS = [
   {
-    name: 'mainnet-beta (Serum)' as ENV,
-    endpoint: 'https://solana-api.projectserum.com/',
-    ChainId: ChainId.MainnetBeta,
-  },
-  {
     name: 'mainnet-beta' as ENV,
-    endpoint: clusterApiUrl('mainnet-beta'),
+    endpoint: 'https://mango.rpcpool.com',
     ChainId: ChainId.MainnetBeta,
   },
   {
@@ -100,14 +90,12 @@ export function ConnectionProvider({ children = undefined as any }) {
     DEFAULT_SLIPPAGE.toString(),
   );
 
-  const connection = useMemo(
-    () => new Connection(endpoint, 'recent'),
-    [endpoint],
-  );
-  const sendConnection = useMemo(
-    () => new Connection(endpoint, 'recent'),
-    [endpoint],
-  );
+  const connection = useMemo(() => new Connection(endpoint, 'recent'), [
+    endpoint,
+  ]);
+  const sendConnection = useMemo(() => new Connection(endpoint, 'recent'), [
+    endpoint,
+  ]);
 
   const env =
     ENDPOINTS.find(end => end.endpoint === endpoint)?.name || ENDPOINTS[0].name;
