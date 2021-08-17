@@ -8,7 +8,7 @@ import {
 import { GOVERNANCE_SCHEMA } from './serialisation';
 import { serialize } from 'borsh';
 import { CastVoteArgs, Vote } from './instructions';
-import { GOVERNANCE_PROGRAM_SEED } from './accounts';
+import { getVoteRecordAddress } from './accounts';
 
 export const withCastVote = async (
   instructions: TransactionInstruction[],
@@ -16,6 +16,7 @@ export const withCastVote = async (
   realm: PublicKey,
   governance: PublicKey,
   proposal: PublicKey,
+  proposalOwnerRecord: PublicKey,
   tokenOwnerRecord: PublicKey,
   governanceAuthority: PublicKey,
   governingTokenMint: PublicKey,
@@ -27,13 +28,10 @@ export const withCastVote = async (
   const args = new CastVoteArgs({ vote });
   const data = Buffer.from(serialize(GOVERNANCE_SCHEMA, args));
 
-  const [voteRecordAddress] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from(GOVERNANCE_PROGRAM_SEED),
-      proposal.toBuffer(),
-      tokenOwnerRecord.toBuffer(),
-    ],
+  const voteRecordAddress = await getVoteRecordAddress(
     programId,
+    proposal,
+    tokenOwnerRecord,
   );
 
   const keys = [
@@ -49,6 +47,11 @@ export const withCastVote = async (
     },
     {
       pubkey: proposal,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: proposalOwnerRecord,
       isWritable: true,
       isSigner: false,
     },

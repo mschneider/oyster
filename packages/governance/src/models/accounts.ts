@@ -298,6 +298,8 @@ export class TokenOwnerRecord {
 
   totalVotesCount: number;
 
+  outstandingProposalCount: number;
+
   reserved: Uint8Array;
 
   governanceDelegate?: PublicKey;
@@ -309,6 +311,7 @@ export class TokenOwnerRecord {
     governingTokenDepositAmount: BN;
     unrelinquishedVotesCount: number;
     totalVotesCount: number;
+    outstandingProposalCount: number;
     reserved: Uint8Array;
   }) {
     this.realm = args.realm;
@@ -317,6 +320,7 @@ export class TokenOwnerRecord {
     this.governingTokenDepositAmount = args.governingTokenDepositAmount;
     this.unrelinquishedVotesCount = args.unrelinquishedVotesCount;
     this.totalVotesCount = args.totalVotesCount;
+    this.outstandingProposalCount = args.outstandingProposalCount;
     this.reserved = args.reserved;
   }
 }
@@ -593,6 +597,23 @@ export class VoteRecord {
     this.isRelinquished = !!args.isRelinquished;
     this.voteWeight = args.voteWeight;
   }
+}
+
+export async function getVoteRecordAddress(
+  programId: PublicKey,
+  proposal: PublicKey,
+  tokenOwnerRecord: PublicKey,
+) {
+  const [voteRecordAddress] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from(GOVERNANCE_PROGRAM_SEED),
+      proposal.toBuffer(),
+      tokenOwnerRecord.toBuffer(),
+    ],
+    programId,
+  );
+
+  return voteRecordAddress;
 }
 
 export class AccountMetaData {
